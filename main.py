@@ -147,3 +147,20 @@ if __name__ == "__main__":
     print("\n🤖 PDF RAG Chatbot v2.0 starting (LangGraph + LLMOps)...")
     print("📄 Open http://localhost:8000 in your browser\n")
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+
+
+
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Allow all origins for now (you can restrict this later to just your Vercel URL)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
