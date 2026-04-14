@@ -1,135 +1,153 @@
-# Custom Text RAG Chatbot
+# 🤖 Advanced PDF RAG Chatbot (v2.0)
 
-A Streamlit-based Retrieval-Augmented Generation (RAG) chatbot that answers questions based on user-provided text using 100% free and open-source models.
+An industry-grade **Retrieval-Augmented Generation (RAG)** system built with a **LangGraph** stateful pipeline, **FastAPI** backend, and **React/Vite** frontend. This version features advanced observability (LLMOps) and a self-correcting RAG architecture.
 
-## Features
+---
 
-- **Text Input**: Paste any large block of text (paragraph, article, etc.)
-- **RAG Pipeline**: Uses RecursiveCharacterTextSplitter, Hugging Face embeddings, and FAISS vector database
-- **Free Models**: sentence-transformers/all-MiniLM-L6-v2 for embeddings, microsoft/phi-2 for text generation
-- **Chat Interface**: Ask questions and get answers grounded in the provided text
+## 🏗️ Architecture Overview
 
-## Prerequisites
+The system transitions from a simple linear script to a **Stateful Graph** for higher reliability and accuracy.
 
-- Python 3.8 or higher
-- Hugging Face account (free)
-
-## Installation and Setup
-
-### 1. Clone or Download the Project
-
-Ensure you have the following files in your project directory:
-- `app.py`
-- `requirements.txt`
-
-### 2. Create and Activate Virtual Environment
-
-Open a terminal/command prompt in the project directory and run:
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-# source venv/bin/activate
+```mermaid
+graph TD
+    A[User Question] --> B[Query Expansion]
+    B --> C[Hybrid Retrieval: BM25 + FAISS]
+    C --> D[Grade Documents]
+    D -- Relevant Docs Found --> E[Generate Answer]
+    D -- No Relevant Docs --> F[Fallback Message]
+    E --> G[User Feedback]
+    F --> G
+    G --> H[Langfuse Tracing & Scoring]
 ```
 
-### 3. Install Dependencies
+### 🛣️ Detailed Processing Pipeline
 
-With the virtual environment activated:
+1.  **Ingestion Phase**:
+    *   **Extraction**: Text is extracted from PDF pages using `PyPDF2`.
+    *   **Chunking**: Text is split into overlapping chunks (500 chars) using `RecursiveCharacterTextSplitter` to maintain context.
+    *   **Indexing**: Chunks are stored in a **FAISS** vector store (Semantic) and a **BM25** index (Keyword).
 
+2.  **Query Phase (LangGraph)**:
+    *   **Expansion**: The LLM generates 3 variations of the user question to capture different keywords.
+    *   **Ensemble Retrieval**: Both FAISS and BM25 are queried. Results are combined using **Reciprocal Rank Fusion (RRF)**.
+    *   **Relevance Grading**: A "Grader LLM" checks every chunk. Irrelevant chunks (noise) are discarded.
+
+3.  **Completion Phase**:
+    *   **Synthesis**: The LLM generates a final response using *only* the verified chunks and previous chat context.
+    *   **Observability**: The entire trace is sent to **Langfuse** for performance monitoring.
+
+---
+
+## 🌟 Key Features
+
+### 1. LangGraph Stateful Pipeline (`rag_graph.py`)
+*   **Pre-retrieval (Query Expansion)**: Rewrites the user query into multiple search perspectives to bridge the semantic gap.
+*   **Ensemble Retrieval**: Combines **Keyword Search (BM25)** and **Semantic Search (FAISS)** for better recall.
+*   **Document Grading**: An LLM-based "Self-Correction" step that filters out irrelevant document chunks before generation.
+*   **Hallucination Prevention**: Uses a fallback mechanism if no relevant context is found in the uploaded document.
+
+### 2. LLMOps & Observability (`llmops_config.py`)
+*   **Real-time Tracing**: Integrated with **Langfuse** to track latency, token usage, and logical paths for every request.
+*   **User Feedback Loop**: Thumbs up/down system linked to specific LLM traces via **Langfuse Scores**.
+*   **Local Feedback Logging**: All interactions and feedback are persisted to `feedback_log.jsonl`.
+*   **Evaluation Suite**: Includes tools to run systematic benchmarks and track experiment results.
+
+### 3. Modern Tech Stack
+*   **Backend**: FastAPI, Uvicorn, LangChain, LangGraph.
+*   **LLM**: Groq (Llama-3.1-8b-instant).
+*   **Embeddings**: HuggingFace (`all-MiniLM-L6-v2`).
+*   **Frontend**: React (Tailwind-style Vanilla CSS, Lucide Icons).
+
+---
+
+## 🚀 Setup & Installation
+
+### 1. Prerequisites
+*   Python 3.9+
+*   Node.js & npm
+*   [Groq API Key](https://console.groq.com/)
+*   [Langfuse Keys](https://cloud.langfuse.com/) (Optional for tracing)
+
+### 2. Backend Setup
+1.  **Clone & Navigate**:
+    ```bash
+    cd chatbot1.0
+    ```
+2.  **Virtual Env**:
+    ```bash
+    python -m venv venv
+    venv\Scripts\activate  # Windows
+    source venv/bin/activate  # Mac/Linux
+    ```
+3.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Environment Variables**: Create a `.env` file:
+    ```env
+    GROQ_API_KEY=gsk_...
+    LANGFUSE_PUBLIC_KEY=pk-lf-...
+    LANGFUSE_SECRET_KEY=sk-lf-...
+    LANGFUSE_HOST=https://cloud.langfuse.com
+    ```
+
+### 3. Frontend Setup
 ```bash
-pip install -r requirements.txt
+cd frontend
+npm install
+npm run dev
 ```
 
-### 4. Get Hugging Face Access Token
+---
 
-1. Go to [https://huggingface.co/](https://huggingface.co/) and create a free account
-2. Click on your profile picture → Settings → Access Tokens
-3. Click "New token"
-4. Give it a name (e.g., "RAG Chatbot")
-5. Select "Read" permissions (free tier)
-6. Click "Generate token"
-7. **Copy the token immediately** (you won't be able to see it again)
+## 🏃 Running the App
 
-### 5. Set Environment Variable for Hugging Face Token
+### Development Mode (Recommended)
+*   **Terminal 1 (Backend)**: `uvicorn main:app --reload --port 8000`
+*   **Terminal 2 (Frontend)**: `npm run dev` (Runs at http://localhost:5173)
 
-**Important**: You must set the `HF_TOKEN` environment variable before running the app.
+---
 
-#### Option A: Set in Terminal (Recommended)
+## 🗺️ Project Roadmap
 
-In the same terminal where you activated the virtual environment:
+- [x] **Phase 1**: Basic RAG with FAISS (MVP).
+- [x] **Phase 2**: Hybrid Search (BM25 + FAISS) for better accuracy.
+- [x] **Phase 3**: Self-Correcting Architecture with **LangGraph**.
+- [x] **Phase 4**: LLMOps integration (Langfuse) and User Feedback.
+- [ ] **Phase 5**: Multi-modal support (Extracting tables/images from PDFs).
+- [ ] **Phase 6**: Persistent Database (Replacing in-memory sessions with PostgreSQL/Redis).
+- [ ] **Phase 7**: User Authentication & Cloud Deployment.
 
-```bash
-# Replace YOUR_ACTUAL_TOKEN_HERE with your copied token
-set HF_TOKEN=YOUR_ACTUAL_TOKEN_HERE
-```
+---
 
-**Note**: On Windows, use `set`. On macOS/Linux, use `export HF_TOKEN=YOUR_ACTUAL_TOKEN_HERE`
+## 📝 Important Interview Q&A (Technical)
 
-#### Option B: Create a .env file (Alternative)
+### 1. What is the benefit of using LangGraph over a standard LangChain chain?
+> **Answer**: Standard chains are linear. LangGraph allows for **cycles** and **conditional logic**. In this project, it allows us to "grade" documents and route the flow differently based on relevance, mimicking a human's reasoning process (Self-RAG).
 
-1. Create a file named `.env` in the project directory
-2. Add this line to the `.env` file:
-   ```
-   HF_TOKEN=YOUR_ACTUAL_TOKEN_HERE
-   ```
-3. Install python-dotenv: `pip install python-dotenv`
-4. Modify `app.py` to load the .env file (add at the top after imports):
-   ```python
-   from dotenv import load_dotenv
-   load_dotenv()
-   ```
+### 2. Why use Hybrid Search (BM25 + FAISS) instead of just Vector Search?
+> **Answer**: Vector search (FAISS) is great for semantic meaning but often fails on specific keywords, IDs, or rare technical terms. BM25 (Keyword search) excels at finding these exact matches. Combining them with an **Ensemble Retriever** gives the best of both worlds.
 
-### 6. Run the Application
+### 3. How do you ensure the LLM doesn't hallucinate when it can't find the answer?
+> **Answer**: Through **Document Grading**. Our graph has a node that explicitly asks an LLM if the retrieved chunks contain information relevant to the question. If the "relevant_docs" list is empty, we route to a "Fallback" node instead of the "Generate" node.
 
-With the virtual environment activated and HF_TOKEN set:
+### 4. What is LLMOps and why did you implement it here?
+> **Answer**: LLMOps is about managing the lifecycle and performance of LLMs. I implemented **Tracing** (via Langfuse) to monitor latency and costs, and **Feedback Scoring** to understand user satisfaction. This data is critical for debugging why certain queries fail in production.
 
-```bash
-streamlit run app.py
-```
+### 5. What are Embeddings and how do they work in this project?
+> **Answer**: Embeddings are numerical representations (vectors) of text. We use `all-MiniLM-L6-v2` to convert PDF chunks into vectors. When a user asks a question, we convert that question into a vector and use **Cosine Similarity** (via FAISS) to find the most similar document chunks.
 
-The app will open in your browser at `http://localhost:8501`.
+---
 
-## How to Use
+## 📊 API Endpoints
 
-1. **Input Text**: In the sidebar, paste your text in the large text area
-2. **Process Text**: Click the "🚀 Process Text" button to split and embed the text
-3. **Ask Questions**: In the main area, type your question and click "🔍 Ask"
-4. **Get Answers**: The AI will provide answers based only on your provided text
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/upload` | Upload PDF and create a session |
+| `POST` | `/ask` | Query the RAG graph |
+| `POST` | `/feedback` | Submit thumbs up/down feedback |
+| `GET` | `/sessions` | List active document sessions |
+| `GET` | `/feedback-stats` | View aggregate satisfaction data |
 
-## Troubleshooting
-
-### "Please enter some text to process"
-- Make sure you've pasted text in the sidebar text area before clicking "Process Text"
-
-### API Errors or Rate Limits
-- Hugging Face free tier has rate limits. Wait a few minutes and try again
-- Ensure your HF_TOKEN is correctly set (no extra spaces, quotes, etc.)
-
-### Import Errors
-- Make sure all packages from `requirements.txt` are installed
-- Try reinstalling: `pip install -r requirements.txt --force-reinstall`
-
-### Model Loading Issues
-- Check your internet connection
-- The first run may take longer as models download
-
-### Token Issues
-- Verify your Hugging Face token is valid and has "Read" permissions
-- Make sure HF_TOKEN is set in the same terminal session you're running the app from
-
-## Technical Details
-
-- **Text Splitting**: RecursiveCharacterTextSplitter (chunk_size=500, overlap=50)
-- **Embeddings**: sentence-transformers/all-MiniLM-L6-v2
-- **Vector Store**: FAISS (in-memory)
-- **LLM**: microsoft/phi-2 via Hugging Face Inference API
-- **Framework**: Streamlit + LangChain
-
-## License
-
-This project uses only free and open-source components.
+---
+*Created by [Your Name/Brand]*
