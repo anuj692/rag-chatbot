@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What is the main topic of this document?",
+    "ground_truth": "The document covers general information about its subject matter."
+  },
+  {
+    "question": "What are the key points mentioned in the first section?",
+    "ground_truth": "The first section introduces the main concepts and provides an overview."
+  },
+  {
+    "question": "What conclusions does the document draw?",
+    "ground_truth": "The document concludes with a summary of findings and recommendations."
+  },
+  {
+    "question": "Are there any specific statistics or data mentioned?",
+    "ground_truth": "The document includes relevant data and statistics to support its arguments."
+  },
+  {
+    "question": "What recommendations does the document make?",
+    "ground_truth": "The document provides actionable recommendations based on its analysis."
+  }
+]
