@@ -8,7 +8,7 @@ import './App.css';
 // The base URL for the FastAPI backend
 // In development, we use Render backend. In production, use VITE_API_BASE_URL (set during build).
 // Example: VITE_API_BASE_URL=https://your-backend-domain.com npm run build
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://rag-chatbot-6.onrender.com';
+const API_BASE = 'https://rag-chatbot-6.onrender.com';
 
 function App() {
   const [sessions, setSessions] = useState([]);
