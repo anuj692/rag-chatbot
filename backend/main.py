@@ -44,6 +44,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Startup event to validate required environment variables
+@app.on_event("startup")
+def validate_environment():
+    """Check required environment variables on startup."""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not groq_key:
+        print("⚠️  WARNING: GROQ_API_KEY environment variable is not set!")
+        print("   The /ask endpoint will fail. Please set GROQ_API_KEY on Render.")
+    else:
+        print(f"✅ GROQ_API_KEY is configured (key length: {len(groq_key)} chars)")
+
 # Lazy import: rag_engine pulls in ML dependencies; delaying it speeds up server startup.
 _rag_engine = None
 
