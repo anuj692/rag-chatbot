@@ -9,7 +9,7 @@ import './App.css';
 // In development, we use localhost:8000. In production, we use the current host.
 // DEV: local backend. PROD: set VITE_API_BASE_URL at build time.
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:8000'
+  ? 'https://rag-chatbot-6.onrender.com/'
   : (import.meta.env.VITE_API_BASE_URL || '');
 
 function App() {

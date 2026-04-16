@@ -1,9 +1,9 @@
 # 🤖 Advanced PDF RAG Chatbot (v2.0)
 
-An industry-grade **Retrieval-Augmented Generation (RAG)** system built with a **LangGraph** stateful pipeline, **FastAPI** backend, and **React/Vite** frontend. This version features advanced observability (LLMOps) and a self-correcting RAG architecture.
+An industry-grade **Retrieval-Augmented Generation (RAG)** system built with a **Langchain** stateful pipeline, **FastAPI** backend, and **React/Vite** frontend. 
 
 ---
-
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ## 🏗️ Architecture Overview
 
 The system transitions from a simple linear script to a **Stateful Graph** for higher reliability and accuracy.
@@ -103,7 +103,7 @@ npm run dev
 ## 🏃 Running the App
 
 ### Development Mode (Recommended)
-*   **Terminal 1 (Backend)**: `uvicorn main:app --reload --port 8000`
+*   **Terminal 1 (Backend)**: ``
 *   **Terminal 2 (Frontend)**: `npm run dev` (Runs at http://localhost:5173)
 
 ---
@@ -133,7 +133,7 @@ npm run dev
 
 ### 4. What is LLMOps and why did you implement it here?
 > **Answer**: LLMOps is about managing the lifecycle and performance of LLMs. I implemented **Tracing** (via Langfuse) to monitor latency and costs, and **Feedback Scoring** to understand user satisfaction. This data is critical for debugging why certain queries fail in production.
-
+uvicorn main:app --reload --port 8000
 ### 5. What are Embeddings and how do they work in this project?
 > **Answer**: Embeddings are numerical representations (vectors) of text. We use `all-MiniLM-L6-v2` to convert PDF chunks into vectors. When a user asks a question, we convert that question into a vector and use **Cosine Similarity** (via FAISS) to find the most similar document chunks.
 
