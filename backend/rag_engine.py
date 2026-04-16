@@ -13,15 +13,10 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_community.retrievers import BM25Retriever
-from langchain_classic.retrievers import EnsembleRetriever
 from dotenv import load_dotenv
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_groq import ChatGroq
 
 load_dotenv()
 
@@ -52,8 +47,10 @@ embeddings_wrapper = None
 # Each session stores: filename, retriever, chunks, chat_history, etc.
 sessions = {}
 
-# ─── Linear Chain ─────────────────────────────────────────────────────────────
-llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMPERATURE)
+# ─── Linear Chain (Lazy) ─────────────────────────────────────────────────────
+# Lazy-load the LLM so the API can start even if GROQ_API_KEY is missing/invalid.
+llm = None
+generation_chain = None
 
 ANSWER_GENERATION_PROMPT = PromptTemplate.from_template(
     "You are an expert analytical assistant. Read the provided context carefully. "
@@ -63,7 +60,17 @@ ANSWER_GENERATION_PROMPT = PromptTemplate.from_template(
     "Document Context:\n{context}\n\n"
     "Question: {question}"
 )
-generation_chain = ANSWER_GENERATION_PROMPT | llm | StrOutputParser()
+
+
+def get_generation_chain():
+    """Create the Groq-backed generation chain on first use."""
+    global llm, generation_chain
+    if generation_chain is not None:
+        return generation_chain
+    from langchain_groq import ChatGroq
+    llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMPERATURE)
+    generation_chain = ANSWER_GENERATION_PROMPT | llm | StrOutputParser()
+    return generation_chain
 
 
 
@@ -98,13 +105,19 @@ def chunk_documents(docs: list[Document]) -> list[Document]:
 # =============================================================================
 # 3. BUILD SEARCH RETRIEVER (Ensemble Hybrid)
 # =============================================================================
-def build_retriever(chunks: list[Document]) -> EnsembleRetriever:
+def build_retriever(chunks: list[Document]):
     """Build FAISS + BM25 retrievers, then wrap in EnsembleRetriever."""
     global embeddings_wrapper
     if embeddings_wrapper is None:
+        from langchain_huggingface import HuggingFaceEmbeddings
         print("Loading embedding model via LangChain HuggingFaceEmbeddings...")
         embeddings_wrapper = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
         print("Embedding model loaded!")
+
+    # Import retriever/vectorstore implementations lazily to speed up API startup.
+    from langchain_community.vectorstores import FAISS
+    from langchain_community.retrievers import BM25Retriever
+    from langchain_classic.retrievers import EnsembleRetriever
 
     bm25_retriever = BM25Retriever.from_documents(chunks)
     bm25_retriever.k = TOP_K_FINAL
@@ -184,7 +197,8 @@ def ask_question(session_id: str, question: str) -> dict:
 
     # 4. Generate Answer
     try:
-        answer = generation_chain.invoke({
+        chain = get_generation_chain()
+        answer = chain.invoke({
             "history": history_str, 
             "context": context, 
             "question": question

@@ -7,7 +7,10 @@ import './App.css';
 
 // The base URL for the FastAPI backend
 // In development, we use localhost:8000. In production, we use the current host.
-const API_BASE = import.meta.env.DEV ? 'http://localhost:8000' : '';
+// DEV: local backend. PROD: set VITE_API_BASE_URL at build time.
+const API_BASE = import.meta.env.DEV
+  ? 'http://localhost:8000'
+  : (import.meta.env.VITE_API_BASE_URL || '');
 
 function App() {
   const [sessions, setSessions] = useState([]);

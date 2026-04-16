@@ -22,8 +22,6 @@ from typing import Optional
 import uvicorn
 import os
 
-import rag_engine
-
 # ─── FastAPI App ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="PDF RAG Chatbot",
@@ -31,22 +29,30 @@ app = FastAPI(
     version="2.0.0"
 )
 
+cors_origins_env = os.getenv(
+    "CORS_ORIGINS",
+    # Netlify frontend domain + local dev origins
+    "https://rag-chatbo.netlify.app,http://localhost:5173,http://localhost:8000"
+)
+cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://your-future-react-app.vercel.app"], # Update this later!
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Allow CORS for local frontend development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Lazy import: rag_engine pulls in ML dependencies; delaying it speeds up server startup.
+_rag_engine = None
+
+def get_rag_engine():
+    global _rag_engine
+    if _rag_engine is None:
+        import rag_engine as _module
+        _rag_engine = _module
+    return _rag_engine
 
 # Serve static files from the React build directory if it exists
 if os.path.isdir("frontend/dist/assets"):
@@ -95,7 +101,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         if len(pdf_bytes) == 0:
             raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-        result = rag_engine.create_session(pdf_bytes, file.filename)
+        result = get_rag_engine().create_session(pdf_bytes, file.filename)
         return result
 
     except ValueError as e:
@@ -118,7 +124,7 @@ async def ask_question(request: AskRequest):
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
     try:
-        result = rag_engine.ask_question(request.session_id, request.question)
+        result = get_rag_engine().ask_question(request.session_id, request.question)
         return result
 
     except ValueError as e:
@@ -130,13 +136,13 @@ async def ask_question(request: AskRequest):
 @app.get("/sessions")
 async def list_sessions():
     """List all active sessions."""
-    return {"sessions": rag_engine.get_sessions()}
+    return {"sessions": get_rag_engine().get_sessions()}
 
 
 @app.delete("/session/{session_id}")
 async def delete_session(session_id: str):
     """Delete a session and free its memory."""
-    if rag_engine.delete_session(session_id):
+    if get_rag_engine().delete_session(session_id):
         return {"message": f"Session {session_id} deleted."}
     else:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
@@ -145,7 +151,7 @@ async def delete_session(session_id: str):
 @app.get("/history/{session_id}")
 async def get_history(session_id: str):
     """Get chat history for a session."""
-    history = rag_engine.get_chat_history(session_id)
+    history = get_rag_engine().get_chat_history(session_id)
     return {"history": history, "session_id": session_id}
 
 
