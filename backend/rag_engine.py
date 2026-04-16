@@ -46,9 +46,8 @@ RAG_CONFIG = {
 }
 
 # ─── Global Initializations ───────────────────────────────────────────────────
-print("Loading embedding model via LangChain HuggingFaceEmbeddings...")
-embeddings_wrapper = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-print("Embedding model loaded!")
+# Lazy-load embeddings so the API can start quickly in cloud environments.
+embeddings_wrapper = None
 
 # Each session stores: filename, retriever, chunks, chat_history, etc.
 sessions = {}
@@ -60,7 +59,7 @@ ANSWER_GENERATION_PROMPT = PromptTemplate.from_template(
     "You are an expert analytical assistant. Read the provided context carefully. "
     "Answer the user's question STRICTLY based on the information provided in the context. "
     "If the information is completely missing, politely say 'I cannot find the answer in the provided document.'\n\n"
-    "Recent Chat Context:\n{history}\n"
+    "Recent Chat Context and if content is present use use llm knowledge to show that in proper structure:\n{history}\n"
     "Document Context:\n{context}\n\n"
     "Question: {question}"
 )
@@ -101,6 +100,12 @@ def chunk_documents(docs: list[Document]) -> list[Document]:
 # =============================================================================
 def build_retriever(chunks: list[Document]) -> EnsembleRetriever:
     """Build FAISS + BM25 retrievers, then wrap in EnsembleRetriever."""
+    global embeddings_wrapper
+    if embeddings_wrapper is None:
+        print("Loading embedding model via LangChain HuggingFaceEmbeddings...")
+        embeddings_wrapper = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+        print("Embedding model loaded!")
+
     bm25_retriever = BM25Retriever.from_documents(chunks)
     bm25_retriever.k = TOP_K_FINAL
 
