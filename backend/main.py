@@ -38,7 +38,7 @@ cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,  # Use environment variable configuration
+    allow_origins="https://rag-chatbo.netlify.app, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
